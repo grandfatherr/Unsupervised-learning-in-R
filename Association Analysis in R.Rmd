@@ -1,0 +1,134 @@
+---
+title: "Association Rules in R"
+author: "Edwin Mutuma"
+date: "7/16/2021"
+output: html_document
+---
+
+
+## Importing And Previewing The Data          
+### Importing the data
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(arules)
+```
+
+
+## READING DATA
+```{r}
+df2 <- read.transactions("http://bit.ly/SupermarketDatasetII", sep = ",")
+```
+
+### Checking the data
+```{r}
+head(df2)
+```
+
+```{r}
+tail(df2)
+```
+
+```{r}
+str(df2)
+```
+
+```{r}
+dim(df2)
+```
+
+```{r}
+summary(df2)
+```
+
+
+### Cleaning the data
+```{r}
+# Previewing our first 5 transactions
+#
+inspect(df2[1:5])
+```
+
+
+## IMPLEMENTING THE SOLUTION
+### Association Rules
+```{r}
+# To preview the items that make up our dataset,
+# 
+items<-as.data.frame(itemLabels(df2))
+colnames(items) <- "Item"
+head(items, 10)  
+```
+
+```{r}
+# Generating a summary of the dataset
+summary(df2)
+```
+
+```{r}
+# Exploring the frequency of some articles 
+itemFrequency(df2[, 8:10],type = "absolute")
+round(itemFrequency(df2[, 8:10],type = "relative")*100,2)
+```
+
+```{r}
+# Displaying top 10 most common items in the transactions dataset 
+# and the items whose relative importance is at least 10%
+# 
+par(mfrow = c(1, 2))
+
+# plot the frequency of items
+itemFrequencyPlot(df2, topN = 10,col="darkgreen")
+itemFrequencyPlot(df2, support = 0.1,col="darkred")
+```
+
+```{r}
+# Building a model based on association rules 
+# using the apriori algorithm
+# We use Min Support as 0.001 and confidence as 0.8
+# ---
+# 
+rules <- apriori (df2, parameter = list(supp = 0.001, conf = 0.8))
+rules
+```
+
+```{r}
+# We can perform an exploration of our model 
+# through the use of the summary function
+summary(rules)
+```
+
+```{r}
+# Ordering these rules by level of confidence
+# then looking at the first ten rules.
+# ---
+# 
+rules<-sort(rules, by="lift", decreasing=TRUE)
+inspect(rules[1:10])
+```
+
+```{r}
+# Ordering these rules by level of confidence
+# then looking at the first ten rules.
+# ---
+# 
+rules<-sort(rules, by="confidence", decreasing=TRUE)
+inspect(rules[1:10])
+```
+
+## *RECOMMENDATIONS*
+We fail to use confidence as a way of measuring the association since it misrepresents the importance of an association. That's why we use lift as a way of measuring the strength of the rules.
+
+1. Most rules had 4 items in each transaction, followed by rules with 5 and 3 items.
+
+2. The top 5 items purchased include: mineral water, eggs, pasta, french fries and chocolate.
+
+3. Transactions with 1 item only were 1754, and were the highest in number followed by transactions with 2 and 3 items.
+
+4. Going by confidence, cake, eggs, pasta, meatballs, mineral water and milk should be placed in aisles that are not far away from each other since there is a pretty high confidence that people will tend to buy those items together.
+
+5. Foods rich in proteins should also be placed closely together since customers tend to buy most of them together.
+
+6. Escalope should have a targeted promotion especially with customers that purchased french fries,mushroom cream sauce and pasta.

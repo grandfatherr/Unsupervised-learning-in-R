@@ -1,0 +1,175 @@
+---
+title: "Dimensionality reduction in R and Feature selection"
+author: "Edwin Mutuma"
+date: "7/16/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+## DATA PREPARATION
+#### Loading the relevant libraries
+```{r}
+library(stats)
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(caret)
+library(psych)
+library(rpart)
+library(devtools)
+library(ggbiplot)
+```
+
+#### Loading and previewing the data
+```{r}
+df <- read.csv("http://bit.ly/CarreFourDataset")
+```
+
+#### Checking the dataset
+```{r}
+head(df)
+```
+
+```{r}
+tail(df)
+```
+
+```{r}
+dim(df)
+```
+
+```{r}
+summary(df)
+```
+
+
+#### Cleaning the data
+```{r}
+# Checking for data completeness
+colSums(is.na(df))
+```
+
+```{r}
+# Checking to see whether we have duplicates in our data
+# Checking for duplicated data
+dim(df[duplicated(df), ])
+```
+
+```{r}
+# check for outliers/anomalies
+numerical <- df[, !sapply(df, is.character)]
+```
+
+```{r}
+par(mfrow = c(1,1), mar = c(5,4,2,2))
+boxplot(numerical[, c(1:2)], main='BoxPlots')
+boxplot(numerical[, c(3,5)])
+boxplot(numerical[, c(6,7)])
+boxplot(numerical[ ,c(4,8)])
+```
+
+## IMPLEMENTING THE SOLUTION
+### PCA USING R
+```{r}
+# creating a dataset for PCA
+sales <- df[,c(6,7,8,12,13,14,15,16)]
+head(sales)
+```
+
+```{r}
+# Removing the gross margin percentage column
+sales = subset(sales, select = -c(gross.margin.percentage, Total) )
+```
+
+
+```{r}
+head(sales)
+```
+```{r}
+
+pca_obj <- prcomp(sales, scale=TRUE)
+summary(pca_obj)
+```
+
+After carrying out PCA, it was thereby duly noted that the first three principal components accounted for 98.71% of the total variance while the rest of the components explained very little of the variance thereby not considered.
+
+```{r}
+ggbiplot(pca_obj, groups = as.factor(df$Branch), ellipse = TRUE, circle = TRUE)
+```
+
+```{r}
+ggbiplot(pca_obj, groups = as.factor(df$Customer.type), ellipse = TRUE, circle = TRUE)
+```
+
+```{r}
+ggbiplot(pca_obj, groups = as.factor(df$Product.line), ellipse = TRUE, circle = TRUE)
+```
+
+```{r}
+ggbiplot(pca_obj, groups = as.factor(df$Payment), ellipse = TRUE, circle = TRUE)
+```
+
+PCA doesn't give us as conclusive clustering as we'd like since there exists an overlap in so many segments of our customers.
+
+### FEATURE SELECTION USING R
+#### Filter Method
+```{r}
+library(caret)
+library(corrplot)
+```
+
+```{r}
+head(sales, 3)
+```
+
+```{r}
+correlationMatrix <- cor(sales)
+correlationMatrix
+```
+
+```{r}
+highlyCorrelated <- findCorrelation(correlationMatrix, cutoff=0.75)
+highlyCorrelated
+```
+
+```{r}
+# Highly correlated attributes
+highlyCorrelated
+
+names(sales[,highlyCorrelated])
+```
+
+```{r}
+# Removing Redundant Features 
+# ---
+# 
+sales_df <- sales[-highlyCorrelated]
+
+# Performing our graphical comparison
+# ---
+# 
+par(mfrow = c(1, 2))
+corrplot(correlationMatrix, order = "hclust")
+corrplot(cor(sales_df), order = "hclust")
+```
+ The filter method works by removing the redundant variables from the data as they measure the relevance of features by their correlation with dependent variable. After implementing filter method of feature selection, we found the features that had the most correlation were tax and cogs and as such should be excluded from the features to be used.
+
+#### Wrapper Method
+```{r}
+# Sequential forward greedy search (default)
+library(clustvarsel)
+library(mclust)
+out = clustvarsel(sales)
+out
+```
+
+In wrapper methods, the feature selection process is based on a specific machine learning algorithm that we are trying to fit on a given dataset.
+A greedy search approach is used in the evaluation of all the possible combinations of features against the evaluation criterion. The evaluation criterion is simply the performance measure which depends on the type of problem.
+
+After employing wrapper method of feature selection, we get quantity, cogs and unit price as the most relevant features to use in building our machine learning model. We'll need to understand the relevance of cogs since wrapper method tells us it is a relevant feature while filter method tells us it is a redundant feature. 
+
+

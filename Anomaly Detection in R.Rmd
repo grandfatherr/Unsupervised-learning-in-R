@@ -1,0 +1,82 @@
+---
+title: "Anomaly detection in R"
+author: "Edwin Mutuma"
+date: "7/17/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Importing And Previewing The Data                 
+### Importing the data
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+library(anomalize)
+```
+
+```{r}
+library(tibbletime)
+```
+
+```{r}
+library(dplyr)
+```
+
+```{r}
+library(magrittr)
+```
+
+```{r}
+path <- 'http://bit.ly/CarreFourSalesDataset' 
+```
+
+          
+```{r}
+# Grouping by server and converting to tibbletime
+
+sales <- read.csv(path) %>% group_by(Date) %>%
+   mutate(Date = as.Date (Date, format="%m/%d/%Y")) %>% as_tbl_time(index = Date)
+
+head(sales)
+
+```
+
+```{r}
+class(sales)
+```
+
+```{r}
+str(sales)
+```
+
+```{r}
+colSums(is.na(sales))
+```
+
+```{r}
+# performing anomaly detection on the sales 
+sales_anomalized <- sales %>% summarise(Orders = sum(Sales)) %>%
+    time_decompose(Orders) %>%
+    anomalize(remainder, alpha = 0.25, max_anoms = 0.2) %>%
+    time_recompose() %>%
+    plot_anomalies(time_recomposed = TRUE) +
+    ggtitle("alpha = 0.25, max_anoms = 0.2")
+    
+sales_anomalized
+```
+
+The default Alpha of 0.05 couldn't detect any anomalies but upon increasing the alpha to 0.25 I discovered some potential anomalies.
+
+## **CONCLUSION**
+* Most anomalies occurred in the months of February and March.
+* Least anomalies occurred in the month of January.
+
+## **RECOMMENDATIONS**
+* The management should take a closer look into the sales that occur in the months of February and March as there is potential for either losses or pilfering of unexplainable profits.
+* There should also be a system in place that detects the anomalies as soon as they occur so that they can be investigated as soon as they occur.
